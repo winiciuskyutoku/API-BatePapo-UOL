@@ -68,11 +68,16 @@ app.get("/participants", async (req, res) => {
 
 app.post("/messages", async (req, res) => {
     const {to, text, type} = req.body
-    const {from} = req.User
+    const user = req.headers.user
     const hour = dayjs()
 
-    console.log(req)
-    console.log(from)
+    const newMessage = {
+        from: user,
+        to,
+        text,
+        type,
+        time: hour.format("HH:mm:ss")
+    }
 
     const userSchema = joi.object({
         to: joi.string().required(),
@@ -82,21 +87,30 @@ app.post("/messages", async (req, res) => {
 
     const validation = userSchema.validate(req.body, {abortEarly: false})
 
+    if(type === "message" || type === "private_message"){
+        const typeValidation = true
+    } else {
+        return res.status(422).send("erro na autenticacao")
+    }
+
     if(validation.error){
         const errors = validation.error.details.map(detail => detail.message)
         return res.status(422).send(errors)
     }
 
     try{
-        const participants = await db.collection("participants").findOne({from: from})
+        const participants = await db.collection("participants").findOne({name: to})
         if(!participants) return res.status(422).send("Esse participantes nao esta no chat")
 
-        await db.colletion("messages").updateOne({from: from,})
+        await db.collection("messages").insertOne(newMessage)
+        res.sendStatus(201)
         
     } catch (err){
         res.status(500).send(err.mesasge)
     }
 })
+
+
 
 
 const PORT = 5000
