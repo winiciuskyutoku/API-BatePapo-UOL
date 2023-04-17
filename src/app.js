@@ -109,18 +109,20 @@ app.post("/messages", async (req, res) => {
 })
 
 app.get("/messages", async (req, res) => {
-    const messagesLimit = Number(req.query.limit)
+    const {limit} = Number(req.query.limit)
     const user = req.headers.user
-
-    if(messagesLimit === NaN || messagesLimit < 1){
-        res.status(422).send("Esse valor nao e permitido")
-    }
-
     
     console.log(req.headers)
 
     try{
         const allMessages = await db.collection("messages").find().toArray()
+
+        const schema = joi.object({
+            limit: joi.number().integer().positive()
+        })
+
+        const validation = schema.validate(limit, {abortEarly: false})
+        if(validation) return res.status(422).send("Esse valor nao e permitido")
 
         const messagesValidation = allMessages.filter(m => {
             if(m.from === user || m.to === user || m.to === "Todos"){
@@ -128,11 +130,7 @@ app.get("/messages", async (req, res) => {
             }
         })
 
-        if(messagesLimit){
-            return res.send(messagesValidation.slice(-messagesLimit))
-        } 
-
-        res.send(messagesValidation)
+        res.send(messagesValidation.slice(-limit))
 
     } catch (err) {
         res.status(500).send(err.message)
@@ -157,6 +155,31 @@ app.post("/status", async (req, res) => {
     }
 
 })
+
+setInterval(async () => {
+    let hour = dayjs()
+
+    try {
+        const timeNow = Date.now()
+
+        const onlineParticipants = await db.collection("participants").find().toArray()
+        onlineParticipants.map(async p => {
+            if(timeNow - p.lastStatus > 10000){
+                await db.collection("participants").deleteOne({name: p.name})
+                await db.collection("participants").insertOne({
+                    from: p.name,
+                    to: "Todos",
+                    text: "sai da sala...",
+                    type: "status",
+                    time: hour.format("HH:mm:ss")
+                })
+            }
+        })
+    } catch (err) {
+        res.status(err).send(err.mesasge)
+
+    }
+}, 15000)
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`)) 
