@@ -105,15 +105,14 @@ app.post("/messages", async (req, res) => {
         
     } catch (err){
         res.status(500).send(err.mesasge)
-    }
+    } 
 })
 
 app.get("/messages", async (req, res) => {
-    const limit = Number(req.query.limit)
+    const {limit} = req.query
     const {user} = req.headers
 
     console.log(limit)
-    console.log(typeof(limit))
 
     try{
 
@@ -125,15 +124,20 @@ app.get("/messages", async (req, res) => {
             }
         })
 
+        if(!limit){
+            return res.send(messagesValidation)
+        }
+
+        if(limit < 1 || isNaN(limit)){
+            return res.sendStatus(422)
+        }
+
         if(limit){
-            if(limit < 1 || isNaN(limit)){
-                return res.sendStatus(422)
-            }
+            
             return res.send(messagesValidation.slice(-limit))
         }
 
-        res.send(messagesValidation)
-
+        
     } catch (err) {
         res.status(500).send(err.message)
     }
