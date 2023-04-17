@@ -109,7 +109,7 @@ app.post("/messages", async (req, res) => {
 })
 
 app.get("/messages", async (req, res) => {
-    const {limit} = Number(req.query.limit)
+    const {limit} = req.query
     const user = req.headers.user
     
     console.log(req.headers)
