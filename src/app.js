@@ -109,31 +109,27 @@ app.post("/messages", async (req, res) => {
 })
 
 app.get("/messages", async (req, res) => {
-    const {limit} = req.query
-    const user = req.headers.user
+    const limit = Number(req.query.limit)
+    const {user} = req.headers
     
-    console.log(req.headers)
+    /* console.log(req.headers)
+    console.log(user)
+    console.log(limit) */
+    console.log(user)
+    console.log(typeof(limit))
+
+    if(typeof(limit) !== "number" || limit < 1){
+        return res.status(422).send("Limite errado")
+    }
 
     try{
         const allMessages = await db.collection("messages").find().toArray()
-
-        const schema = joi.object({
-            limit: joi.number().integer().positive()
-        })
-
-        const validation = schema.validate(limit, {abortEarly: false})
-        if(validation) return res.status(422).send("Esse valor nao e permitido")
 
         const messagesValidation = allMessages.filter(m => {
             if(m.from === user || m.to === user || m.to === "Todos"){
                 return true
             }
         })
-
-
-        if (limit) {
-            res.send(messagesValidation.slice(-limit))
-        }
         
         res.send(messagesValidation)
 
@@ -165,13 +161,15 @@ setInterval(async () => {
     let hour = dayjs()
 
     try {
-        const timeNow = Date.now()
 
         const onlineParticipants = await db.collection("participants").find().toArray()
-        onlineParticipants.map(async p => {
-            if(timeNow - p.lastStatus > 10000){
+        onlineParticipants.forEach(async p => {
+
+            const currentTime = Date.now() - p.lastStatus
+
+            if(currentTime > 10000){
                 await db.collection("participants").deleteOne({name: p.name})
-                await db.collection("participants").insertOne({
+                await db.collection("messages").insertOne({
                     from: p.name,
                     to: "Todos",
                     text: "sai da sala...",
@@ -181,7 +179,7 @@ setInterval(async () => {
             }
         })
     } catch (err) {
-        res.status(err).send(err.mesasge)
+        res.status(500).send(err.mesasge)
 
     }
 }, 15000)
