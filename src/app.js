@@ -130,7 +130,12 @@ app.get("/messages", async (req, res) => {
             }
         })
 
-        res.send(messagesValidation.slice(-limit))
+
+        if (limit) {
+            res.send(messagesValidation.slice(-limit))
+        }
+        
+        res.send(messagesValidation)
 
     } catch (err) {
         res.status(500).send(err.message)
