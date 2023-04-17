@@ -111,18 +111,12 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async (req, res) => {
     const limit = Number(req.query.limit)
     const {user} = req.headers
-    
-    /* console.log(req.headers)
-    console.log(user)
-    console.log(limit) */
-    console.log(user)
+
+    console.log(limit)
     console.log(typeof(limit))
 
-    if(typeof(limit) !== "number" || limit < 1){
-        return res.status(422).send("Limite errado")
-    }
-
     try{
+
         const allMessages = await db.collection("messages").find().toArray()
 
         const messagesValidation = allMessages.filter(m => {
@@ -130,7 +124,14 @@ app.get("/messages", async (req, res) => {
                 return true
             }
         })
-        
+
+        if(limit){
+            if(limit < 1 || isNaN(limit)){
+                return res.sendStatus(422)
+            }
+            return res.send(messagesValidation.slice(-limit))
+        }
+
         res.send(messagesValidation)
 
     } catch (err) {
