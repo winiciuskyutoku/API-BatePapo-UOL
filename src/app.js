@@ -82,16 +82,14 @@ app.post("/messages", async (req, res) => {
     const userSchema = joi.object({
         to: joi.string().required(),
         text: joi.string().required(),
-        type: joi.valid("message", "private_message")
+        type: joi.string().required()
     })
 
     const validation = userSchema.validate(req.body, {abortEarly: false})
 
-    if(type === "message" || type === "private_message"){
-        const typeValidation = true
-    } else {
-        return res.status(422).send("erro na autenticacao")
-    }
+    const typeValidation = type === "message" || type === "private_message"
+
+    if(typeValidation === false) return res.status(422).send("Tipo de mensagem nao permitido")
 
     if(validation.error){
         const errors = validation.error.details.map(detail => detail.message)
@@ -99,7 +97,7 @@ app.post("/messages", async (req, res) => {
     }
 
     try{
-        const participants = await db.collection("participants").findOne({name: to})
+        const participants = await db.collection("participants").findOne({name: user})
         if(!participants) return res.status(422).send("Esse participantes nao esta no chat")
 
         await db.collection("messages").insertOne(newMessage)
@@ -110,7 +108,30 @@ app.post("/messages", async (req, res) => {
     }
 })
 
+app.get("/messages", async (req, res) => {
+    const messagesLimit = req.query.limit
+    const user = req.headers.user
+    console.log(req.headers)
 
+    try{
+        const allMessages = await db.collection("messages").find().toArray()
+
+        const messagesValidation = allMessages.filter(m => {
+            if(m.from === user || m.to === user || m.to === "Todos"){
+                return true
+            }
+        })
+
+        if(messagesLimit){
+            res.send(messagesValidation.slice(-messagesLimit))
+        } 
+
+        res.send(messagesValidation)
+
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
 
 
 const PORT = 5000
